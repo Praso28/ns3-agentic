@@ -1,0 +1,13 @@
+{
+  "name": "f1_failure",
+  "duration": 120,
+  "events": [
+    {
+      "time": 35,
+      "type": "node_failure",
+      "target": "node-1",
+      "severity": 1.0,
+      "duration": 20
+    }
+  ]
+}

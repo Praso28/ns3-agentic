@@ -1,0 +1,10 @@
+{
+  "name": "ns3_real_template",
+  "duration": 0,
+  "events": [],
+  "ns3": {
+    "command": "./ns3 run scratch/ai5g-metrics -- --metricsToStdout=1 --realTime=1 --controlChannel=/tmp/ai5g-control.jsonl",
+    "workdir": "/home/pranay/ai5g/ns3-agentic/tools/ns-3-dev",
+    "control_channel": "/tmp/ai5g-control.jsonl"
+  }
+}

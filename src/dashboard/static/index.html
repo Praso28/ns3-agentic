@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ai5g Live Dashboard</title>
+  <style>
+    :root {
+      --bg-1: #f2f7ef;
+      --bg-2: #e5efe7;
+      --ink: #1a2a26;
+      --muted: #5e746b;
+      --card: rgba(255, 255, 255, 0.82);
+      --card-border: rgba(22, 54, 44, 0.12);
+      --accent: #c65d1f;
+      --ok: #198754;
+      --bad: #b83838;
+      --warn: #8f6a18;
+      --line-1: #c65d1f;
+      --line-2: #1f6f8b;
+      --line-3: #198754;
+      --line-4: #a13f66;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 12% 15%, rgba(198, 93, 31, 0.18), transparent 28%),
+        radial-gradient(circle at 88% 8%, rgba(31, 111, 139, 0.16), transparent 24%),
+        linear-gradient(135deg, var(--bg-1), var(--bg-2));
+      color: var(--ink);
+      min-height: 100vh;
+    }
+    .wrap { max-width: 1320px; margin: 0 auto; padding: 18px; }
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(1.2rem, 2.4vw, 2rem);
+      letter-spacing: 0.015em;
+    }
+    .sub { margin-top: 4px; color: var(--muted); }
+    .hero-right {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 0.86rem;
+      color: var(--muted);
+    }
+    .pill {
+      border: 1px solid var(--card-border);
+      background: rgba(255, 255, 255, 0.75);
+      border-radius: 999px;
+      padding: 4px 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--bad);
+      box-shadow: 0 0 0 rgba(184, 56, 56, 0.55);
+      animation: pulse 1.4s infinite;
+    }
+    .dot.live {
+      background: var(--ok);
+      box-shadow: 0 0 0 rgba(25, 135, 84, 0.45);
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 currentColor; }
+      70% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(0,0,0,0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0,0,0,0); }
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(4px);
+      border-radius: 16px;
+      box-shadow: 0 8px 28px rgba(22, 54, 44, 0.08);
+      padding: 14px;
+    }
+    .label { font-size: 0.78rem; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em; }
+    .value { margin-top: 4px; font-size: 1.35rem; font-weight: 700; }
+    .ok { color: var(--ok); }
+    .bad { color: var(--bad); }
+    .accent { color: var(--accent); }
+    .warn { color: var(--warn); }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .metric { display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(0,0,0,0.08); padding: 4px 0; font-size: 0.9rem; }
+
+    .legend {
+      margin: 8px 0 2px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .legend span::before {
+      content: "";
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      margin-right: 6px;
+      vertical-align: middle;
+      background: var(--line-1);
+    }
+    .legend .thr::before { background: var(--line-2); }
+    .legend .loss::before { background: var(--line-3); }
+    .legend .jit::before { background: var(--line-4); }
+    canvas {
+      width: 100%;
+      height: 210px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.8), rgba(245, 250, 247, 0.95));
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 12px;
+    }
+
+    .timeline {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin-top: 8px;
+    }
+    .timeline th, .timeline td {
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      text-align: left;
+      padding: 6px 4px;
+    }
+    .timeline-wrap { max-height: 240px; overflow: auto; }
+
+    #stream {
+      max-height: 220px;
+      overflow: auto;
+      white-space: pre-wrap;
+      background: #162025;
+      color: #dce8ef;
+      border-radius: 10px;
+      font-size: 0.75rem;
+      font-family: "JetBrains Mono", "Consolas", monospace;
+      padding: 8px;
+    }
+    .stream-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+    .report-box {
+      background: #fffbf6;
+      border: 1px solid rgba(198,93,31,0.2);
+      border-radius: 12px;
+      padding: 10px;
+      margin-top: 8px;
+    }
+    .report-title { font-weight: 700; margin-bottom: 4px; }
+    .report-small { color: var(--muted); font-size: 0.88rem; }
+
+    @media (max-width: 980px) {
+      .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 620px) {
+      .grid-4 { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <div>
+        <h1>ai5g Real-Time Operations Dashboard</h1>
+        <div class="sub">Live NS-3 telemetry, incident timeline, and LLM post-run narrative</div>
+      </div>
+      <div class="hero-right">
+        <div class="pill"><span id="liveDot" class="dot"></span><span id="liveState">offline</span></div>
+        <div class="pill">Run timestamp: <strong id="runTimestamp">-</strong></div>
+      </div>
+    </div>
+
+    <div class="grid-4">
+      <div class="card"><div class="label">Connection</div><div id="conn" class="value">Connecting</div></div>
+      <div class="card"><div class="label">Latest Fault</div><div id="fault" class="value accent">NONE</div></div>
+      <div class="card"><div class="label">Latest Action</div><div id="action" class="value">no_action</div></div>
+      <div class="card"><div class="label">Mode</div><div id="mode" class="value">ADVISE</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="label">Metric Trends (Recent Window)</div>
+        <div class="legend">
+          <span>Latency</span>
+          <span class="thr">Throughput</span>
+          <span class="loss">Loss x100</span>
+          <span class="jit">Jitter</span>
+        </div>
+        <canvas id="chart" width="920" height="220"></canvas>
+        <div class="metrics">
+          <div>
+            <div class="metric"><span>Latency</span><strong id="latency">-</strong></div>
+            <div class="metric"><span>Throughput</span><strong id="throughput">-</strong></div>
+            <div class="metric"><span>Packet Loss</span><strong id="loss">-</strong></div>
+            <div class="metric"><span>Jitter</span><strong id="jitter">-</strong></div>
+          </div>
+          <div>
+            <div class="metric"><span>Anomaly</span><strong id="anomaly">false</strong></div>
+            <div class="metric"><span>Severity</span><strong id="severity">-</strong></div>
+            <div class="metric"><span>Persistence</span><strong id="persistence">-</strong></div>
+            <div class="metric"><span>Incident ID</span><strong id="incident">-</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="label">Run Summary</div>
+        <div class="metric"><span>Incidents</span><strong id="sumIncidents">-</strong></div>
+        <div class="metric"><span>Resolved</span><strong id="sumResolved">-</strong></div>
+        <div class="metric"><span>Escalated</span><strong id="sumEscalated">-</strong></div>
+        <div class="metric"><span>Records</span><strong id="sumRecords">-</strong></div>
+        <div class="metric"><span>F1 Count</span><strong id="sumF1">-</strong></div>
+        <div class="metric"><span>F2 Count</span><strong id="sumF2">-</strong></div>
+        <div class="metric"><span>F3 Count</span><strong id="sumF3">-</strong></div>
+
+        <div class="report-box">
+          <div id="llmTitle" class="report-title">Run Completion Report</div>
+          <div id="llmOverview" class="report-small">Waiting for run completion summary...</div>
+          <div id="llmFinal" class="report-small" style="margin-top:6px;"></div>
+        </div>
+
+        <div class="label" style="margin-top:10px;">Live Event Stream</div>
+        <div id="stream"></div>
+        <div class="stream-meta">
+          <span>Last metric t: <strong id="lastMetricTs">-</strong></span>
+          <span>Events in view: <strong id="eventCount">0</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:10px;">
+      <div class="label">Incident Timeline</div>
+      <div class="timeline-wrap">
+        <table class="timeline">
+          <thead>
+            <tr><th>t (sec)</th><th>Fault</th><th>Action</th><th>State</th><th>Explanation</th></tr>
+          </thead>
+          <tbody id="timelineBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const stream = $("stream");
+    const timelineBody = $("timelineBody");
+    let lastMetricTimestamp = null;
+    let eventCount = 0;
+
+    const recent = {
+      t: [], latency: [], throughput: [], loss: [], jitter: []
+    };
+    const MAX_POINTS = 80;
+
+    function writeLine(text) {
+      stream.textContent += text + "\n";
+      if (stream.textContent.length > 100000) {
+        stream.textContent = stream.textContent.slice(-70000);
+      }
+      stream.scrollTop = stream.scrollHeight;
+    }
+
+    function setConnection(ok) {
+      const node = $("conn");
+      node.textContent = ok ? "LIVE" : "DISCONNECTED";
+      node.className = "value " + (ok ? "ok" : "bad");
+      $("liveDot").className = "dot" + (ok ? " live" : "");
+      $("liveState").textContent = ok ? "online" : "offline";
+    }
+
+    function resetForNewRun() {
+      recent.t = [];
+      recent.latency = [];
+      recent.throughput = [];
+      recent.loss = [];
+      recent.jitter = [];
+      stream.textContent = "";
+      eventCount = 0;
+      $("eventCount").textContent = "0";
+      writeLine("new run detected -> cleared live window");
+    }
+
+    function pushPoint(evt) {
+      const m = evt.metric || {};
+      const metricTs = Number(evt.metric_timestamp ?? 0);
+      if (Number.isFinite(metricTs)) {
+        if (lastMetricTimestamp !== null && metricTs < lastMetricTimestamp) {
+          resetForNewRun();
+        }
+        lastMetricTimestamp = metricTs;
+        $("lastMetricTs").textContent = String(metricTs);
+      }
+
+      recent.t.push(metricTs);
+      recent.latency.push(Number(m.latency_ms ?? 0));
+      recent.throughput.push(Number(m.throughput_mbps ?? 0));
+      recent.loss.push(Number(m.packet_loss ?? 0));
+      recent.jitter.push(Number(m.jitter ?? 0));
+
+      for (const k of Object.keys(recent)) {
+        if (recent[k].length > MAX_POINTS) recent[k].shift();
+      }
+    }
+
+    function drawLine(ctx, arr, minY, maxY, color, w, h) {
+      if (!arr.length) return;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      for (let i = 0; i < arr.length; i++) {
+        const x = (i / Math.max(arr.length - 1, 1)) * (w - 24) + 12;
+        const yNorm = (arr[i] - minY) / Math.max(maxY - minY, 1e-6);
+        const y = h - 12 - yNorm * (h - 24);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    function redrawChart() {
+      const canvas = $("chart");
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const all = [...recent.latency, ...recent.throughput, ...recent.loss.map(x => x * 100), ...recent.jitter];
+      const minY = Math.min(...all, 0);
+      const maxY = Math.max(...all, 1);
+
+      ctx.strokeStyle = "rgba(0,0,0,0.12)";
+      for (let i = 1; i <= 4; i++) {
+        const y = (h / 5) * i;
+        ctx.beginPath();
+        ctx.moveTo(10, y);
+        ctx.lineTo(w - 10, y);
+        ctx.stroke();
+      }
+
+      drawLine(ctx, recent.latency, minY, maxY, getComputedStyle(document.documentElement).getPropertyValue("--line-1"), w, h);
+      drawLine(ctx, recent.throughput, minY, maxY, getComputedStyle(document.documentElement).getPropertyValue("--line-2"), w, h);
+      drawLine(ctx, recent.loss.map(v => v * 100), minY, maxY, getComputedStyle(document.documentElement).getPropertyValue("--line-3"), w, h);
+      drawLine(ctx, recent.jitter, minY, maxY, getComputedStyle(document.documentElement).getPropertyValue("--line-4"), w, h);
+    }
+
+    function addTimelineRows(incidents) {
+      timelineBody.innerHTML = "";
+      for (const inc of incidents || []) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${inc.metric_timestamp ?? "-"}</td><td>${inc.fault ?? "-"}</td><td>${inc.action ?? "-"}</td><td>${inc.verification_state ?? "-"}</td><td>${inc.llm_explanation ?? ""}</td>`;
+        timelineBody.appendChild(tr);
+      }
+    }
+
+    async function refreshSummary() {
+      try {
+        const r = await fetch("/api/summary?_=" + Date.now(), { cache: "no-store" });
+        const data = await r.json();
+        const s = data.summary || {};
+        const fc = s.fault_counts || {};
+
+        $("sumIncidents").textContent = s.incidents ?? "-";
+        $("sumResolved").textContent = s.resolved ?? "-";
+        $("sumEscalated").textContent = s.escalated ?? "-";
+        $("sumRecords").textContent = s.records_processed ?? "-";
+        $("sumF1").textContent = fc.F1 ?? 0;
+        $("sumF2").textContent = fc.F2 ?? 0;
+        $("sumF3").textContent = fc.F3 ?? 0;
+
+        const report = data.llm_run_report || {};
+        $("llmTitle").textContent = report.title || "Run Completion Report";
+        $("llmOverview").textContent = report.overview || "Waiting for run completion summary...";
+        $("llmFinal").textContent = report.final_note || "";
+        $("runTimestamp").textContent = data.timestamp || "-";
+
+        addTimelineRows(data.incidents || []);
+      } catch (e) {
+        writeLine("summary fetch failed: " + e);
+      }
+    }
+
+    function updateFromEvent(evt) {
+      const metric = evt.metric || {};
+      const obs = evt.observation || {};
+      const d = evt.decision || {};
+
+      $("fault").textContent = d.fault || "NONE";
+      $("action").textContent = d.action || "no_action";
+      $("mode").textContent = d.mode || "ADVISE";
+
+      $("latency").textContent = metric.latency_ms?.toFixed?.(2) ?? metric.latency_ms ?? "-";
+      $("throughput").textContent = metric.throughput_mbps?.toFixed?.(2) ?? metric.throughput_mbps ?? "-";
+      $("loss").textContent = metric.packet_loss?.toFixed?.(4) ?? metric.packet_loss ?? "-";
+      $("jitter").textContent = metric.jitter?.toFixed?.(2) ?? metric.jitter ?? "-";
+      $("anomaly").textContent = String(Boolean(obs.anomaly));
+      $("severity").textContent = obs.severity ?? "-";
+      $("persistence").textContent = obs.persistence ?? "-";
+      $("incident").textContent = evt.active_incident_id || "-";
+
+      pushPoint(evt);
+      redrawChart();
+      eventCount += 1;
+      $("eventCount").textContent = String(eventCount);
+
+      writeLine(JSON.stringify({
+        t: evt.metric_timestamp,
+        fault: d.fault,
+        action: d.action,
+        mode: d.mode,
+        lat: metric.latency_ms,
+        thr: metric.throughput_mbps,
+        loss: metric.packet_loss,
+        anomaly: obs.anomaly,
+      }));
+    }
+
+    function connect() {
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      const ws = new WebSocket(`${proto}://${location.host}/ws/live`);
+
+      ws.onopen = () => {
+        setConnection(true);
+        writeLine("connected to live stream");
+      };
+
+      ws.onmessage = (msg) => {
+        try {
+          updateFromEvent(JSON.parse(msg.data));
+        } catch (e) {
+          writeLine("bad message: " + e);
+        }
+      };
+
+      ws.onerror = () => setConnection(false);
+      ws.onclose = () => {
+        setConnection(false);
+        writeLine("stream closed; reconnecting...");
+        setTimeout(connect, 1200);
+      };
+    }
+
+    refreshSummary();
+    setInterval(refreshSummary, 2500);
+    connect();
+  </script>
+</body>
+</html>

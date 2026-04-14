@@ -1,0 +1,13 @@
+{
+  "name": "f2_congestion",
+  "duration": 120,
+  "events": [
+    {
+      "time": 30,
+      "type": "traffic_spike",
+      "target": "node-1",
+      "severity": 1.5,
+      "duration": 25
+    }
+  ]
+}

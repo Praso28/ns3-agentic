@@ -1,0 +1,13 @@
+{
+  "name": "f3_network",
+  "duration": 120,
+  "events": [
+    {
+      "time": 40,
+      "type": "network_degradation",
+      "target": "node-1",
+      "severity": 1.2,
+      "duration": 25
+    }
+  ]
+}
