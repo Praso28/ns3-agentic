@@ -74,6 +74,26 @@ Scenario config keys for real mode:
 9. audit logging
 10. LLM explanation (non-binding)
 
+## KPI And Anomaly Formulas
+
+Real mode metrics are now derived from ns-3 flow statistics (not static equations).
+
+Per 1-second interval (`delta` between current and previous FlowMonitor snapshots):
+
+- `throughput_mbps = (delta_rx_bytes * 8) / 1e6`
+- `packet_loss = max(delta_tx_packets - delta_rx_packets, 0) / max(delta_tx_packets, 1)`
+- `latency_ms = (delta_delay_sum / max(delta_rx_packets, 1)) * 1000`
+- `jitter_ms = (delta_jitter_sum / max(delta_rx_packets - 1, 1)) * 1000`
+
+Adaptive anomaly detection in the observer uses rolling-window formulas:
+
+- `latency_threshold = max(latency_floor, mean_latency + k_lat * std_latency, offset + k_jit * mean_jitter)`
+- `throughput_threshold = max(throughput_floor, min(mean_throughput * drop_ratio, mean_throughput - k_thr * std_throughput))`
+- `loss_threshold = max(loss_floor, mean_loss + k_loss * std_loss)`
+- `jitter_threshold = max(jitter_floor, mean_jitter + k_jit_std * std_jitter)`
+
+Signals are then converted into weighted severity using positive z-scores, and persistence is computed from anomaly frequency over the sliding window.
+
 ## Notes
 
 - Decision logic is deterministic and rule-based.
@@ -148,8 +168,17 @@ Use the `Makefile` so you do not need long CLI flags every time:
 make help
 make dashboard
 make run-real
+make run-real-faulttest
+make evaluate-real
 make run-real-ollama
 make mentor-demo
+```
+
+Before real runs, the project syncs the tracked ns-3 app source from `assets/ns3/ai5g-metrics.cc`
+into the local ns-3 workspace (`tools/ns-3-dev/scratch/ai5g-metrics.cc`) via:
+
+```bash
+make sync-ns3-app
 ```
 
 Useful overrides:
@@ -157,4 +186,41 @@ Useful overrides:
 ```bash
 make run-real DURATION=60
 make run-real-ollama OLLAMA_MODEL=qwen2.5:1.5b
+make run-real-faulttest DURATION=120 REALTIME=0
+make evaluate-real DURATION=120 REALTIME=0
+make evaluate-real DURATION=120 REALTIME=0 SEED=7
 ```
+
+## Submission-Ready Validation Workflow
+
+Use this sequence for reproducible reporting:
+
+```bash
+make test
+make run-real-faulttest DURATION=120 REALTIME=0
+make evaluate-real DURATION=120 REALTIME=0
+```
+
+To compare run-to-run variability, vary seed start:
+
+```bash
+make evaluate-real DURATION=120 REALTIME=0 SEED=21
+```
+
+Generated artifacts:
+
+- `reports/final_report.json` - latest single-run result
+- `reports/evaluation_summary.json` - aggregate metrics across repeated runs
+- `reports/evaluation_summary.md` - markdown summary suitable for report appendices
+
+Reproducibility note:
+
+- Using the same seed yields deterministic replay-friendly behavior.
+- `evaluate-real` increments seed each run (`SEED`, `SEED+1`, ...).
+
+Status labels used in evaluation summary:
+
+- `GOOD`: average resolution ratio >= 0.80
+- `FAIR`: average resolution ratio >= 0.50 and < 0.80
+- `NEEDS_TUNING`: average resolution ratio < 0.50
+- `INCONCLUSIVE`: no incidents triggered across successful runs

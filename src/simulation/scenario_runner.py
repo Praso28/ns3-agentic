@@ -34,9 +34,11 @@ class SimulationController:
 		self.node_up = True
 		self.active_faults.pop("node_failure", None)
 
-	def reduce_load(self, factor: float = 0.30) -> None:
+	def reduce_load(self, factor: float = 0.30, target: str = "node-1") -> None:
+		"""Apply load reduction. The *target* argument is accepted for API parity with Ns3Controller."""
 		self.load_multiplier = max(1.0, self.load_multiplier * (1.0 - factor))
-		if self.load_multiplier == 1.0:
+		if self.load_multiplier <= 1.01:
+			self.load_multiplier = 1.0
 			self.active_faults.pop("traffic_spike", None)
 
 	def _tick_fault_decay(self) -> None:

@@ -11,8 +11,9 @@ class Diagnoser:
 
 		throughput = latest.get("throughput_mbps", 0.0)
 		node_up = latest.get("node_up", True)
+		node_down_signal = bool(signals.get("node_down", False))
 
-		if (not node_up) or throughput <= 0.5:
+		if node_down_signal or (not node_up) or throughput <= 0.5:
 			return {"fault": "F1", "target": latest.get("node_id", "node-1")}
 
 		if signals.get("latency_spike") and signals.get("throughput_drop"):

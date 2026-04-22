@@ -17,7 +17,8 @@ class AgentCore:
 		observation = self.observer.observe(snapshot)
 		diagnosis = self.diagnoser.diagnose(observation)
 		confidence = self.confidence_model.compute(observation, diagnosis)
-		decision = self.planner.plan(diagnosis, confidence)
+		severity = float(observation.get("severity", 0.0))
+		decision = self.planner.plan(diagnosis, confidence, severity=severity)
 		return {
 			"observation": observation,
 			"diagnosis": diagnosis,
